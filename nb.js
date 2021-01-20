@@ -22,7 +22,6 @@ function Nb(){//重構第一步：先將全域變數收攏到物件內
         'g7'
     ];
     vm.bulletproof  = ['d#m', 'g#', 'b', 'f#', 'g#m', 'c#'],
-    vm.song_11  = [];
     vm.songs  = [];
     vm.labels  = [];
     vm.allChords  = [];
@@ -47,11 +46,11 @@ function Nb(){//重構第一步：先將全域變數收攏到物件內
         return vm.labels
     }
     vm.trainAllChords = (chords) =>{
-        for (let i = 0; i < chords.length; i++) {
-            if (!vm.allChords.includes(chords[i])) {
-                vm.allChords.push(chords[i]);
+        chords.forEach(item=>{
+            if (!vm.allChords.includes(item)) {
+                vm.allChords = [...vm.allChords,item]
             }
-        }
+        })
         return vm.allChords;
     }
     vm.trainLabelCounts = (label) => {
@@ -63,32 +62,25 @@ function Nb(){//重構第一步：先將全域變數收攏到物件內
         return vm.labelCounts;
     }
 
-    //getNumberOfSongs
-    this.getNumberOfSongs = () =>{
-        return this.songs.length;
-    }
-
     //setLabelProbabilities
-    this.setLabelProbabilities = () =>{
-        let vm = this;
-        Object.keys(vm.labelCounts).forEach(function (label) {
-            vm.labelProbabilities[label] = vm.labelCounts[label] / vm.getNumberOfSongs();
+    vm.setLabelProbabilities = () =>{
+        Object.keys(vm.labelCounts).forEach( label => {
+            vm.labelProbabilities[label] = vm.labelCounts[label] / vm.songs.length;
         });
         return vm.labelProbabilities;
     }
 
     //setChordCountsInLabels
-    this.setChordCountsInLabels = () =>{
-        let vm = this;
-        vm.songs.forEach(function (i) {
-            if (vm.chordCountsInLabels[i[0]] === undefined) {
-                vm.chordCountsInLabels[i[0]] = {};
+    vm.setChordCountsInLabels = () =>{
+        vm.songs.forEach(function (song) {
+            if (!vm.chordCountsInLabels[song[0]]) {
+                vm.chordCountsInLabels[song[0]] = {};
             }
-            i[1].forEach(function (j) {
-                if (vm.chordCountsInLabels[i[0]][j] > 0) {
-                    vm.chordCountsInLabels[i[0]][j] = vm.chordCountsInLabels[i[0]][j] + 1;
+            song[1].forEach(function (chord) {
+                if (vm.chordCountsInLabels[song[0]][chord] > 0) {
+                    vm.chordCountsInLabels[song[0]][chord] = vm.chordCountsInLabels[song[0]][chord] + 1;
                 } else {
-                    vm.chordCountsInLabels[i[0]][j] = 1;
+                    vm.chordCountsInLabels[song[0]][chord] = 1;
                 }
             });
         });
@@ -96,60 +88,55 @@ function Nb(){//重構第一步：先將全域變數收攏到物件內
     }
 
     //setProbabilityOfChordsInLabels
-    this.setProbabilityOfChordsInLabels=()=>{
-        let vm = this;
-        vm.probabilityOfChordsInLabels = this.chordCountsInLabels;
-        Object.keys(vm.probabilityOfChordsInLabels).forEach(function (i) {
-            Object.keys(vm.probabilityOfChordsInLabels[i]).forEach(function (j) {
-                vm.probabilityOfChordsInLabels[i][j] = vm.probabilityOfChordsInLabels[i][j] * 1.0 / vm.songs.length;
+    vm.setProbabilityOfChordsInLabels=()=>{
+        vm.probabilityOfChordsInLabels = vm.chordCountsInLabels;
+        Object.keys(vm.probabilityOfChordsInLabels).forEach( p => {
+            Object.keys(vm.probabilityOfChordsInLabels[p]).forEach(chordNum => {
+                vm.probabilityOfChordsInLabels[p][chordNum] = vm.probabilityOfChordsInLabels[p][chordNum] * 1.0 / vm.songs.length;
             });
         });
         return vm.probabilityOfChordsInLabels;
     }
 
-    this.classify = (chords) => {
-        let vm = this;
-        var ttal = vm.labelProbabilities;
-        console.log(ttal);
-        var classified = {};
-        Object.keys(ttal).forEach(function (obj) {
-            var first = vm.labelProbabilities[obj] + 1.01;
-            chords.forEach(function (chord) {
-                var probabilityOfChordInLabel =
-                    vm.probabilityOfChordsInLabels[obj][chord];
-                if (probabilityOfChordInLabel === undefined) {
-                    first + 1.01;
-                } else {
-                    first = first * (probabilityOfChordInLabel + 1.01);
-                }
-            });
-            classified[obj] = first;
+    vm.classify = (chords) => {
+        let classified = {};
+        Object.keys(vm.labelProbabilities).forEach( obj => {
+            let first = vm.labelProbabilities[obj] + 1.01;
+            classified[obj] = vm.countClassifiedResult(chords,obj,first);
         });
-        console.log(classified);
         return classified;
+    }
+    //classify拆出countClassifiedResult
+    vm.countClassifiedResult = (chords,obj,first) => {
+        chords.forEach( chord => {
+            if (!vm.probabilityOfChordsInLabels[obj][chord]) {
+                first + 1.01;
+            } else {
+                first = first * (vm.probabilityOfChordsInLabels[obj][chord] + 1.01);
+            }
+        });
+        return first;
     }
 }
 
 const nb = new Nb();
-// nb.train(nb.imagine, 'easy');
-
 nb.train(nb.imagine, 'easy');
-// nb.train(nb.somewhere_over_the_rainbow, 'easy');
-// nb.train(nb.tooManyCooks, 'easy');
-// nb.train(nb.iWillFollowYouIntoTheDark, 'medium');
-// nb.train(nb.babyOneMoreTime, 'medium');
-// nb.train(nb.creep, 'medium');
-// nb.train(nb.paperBag, 'hard');
-// nb.train(nb.toxic, 'hard');
-// nb.train(nb.bulletproof, 'hard');
-// nb.setLabelProbabilities();
-// nb.setChordCountsInLabels();
-// nb.setProbabilityOfChordsInLabels();
+nb.train(nb.somewhere_over_the_rainbow, 'easy');
+nb.train(nb.tooManyCooks, 'easy');
+nb.train(nb.iWillFollowYouIntoTheDark, 'medium');
+nb.train(nb.babyOneMoreTime, 'medium');
+nb.train(nb.creep, 'medium');
+nb.train(nb.paperBag, 'hard');
+nb.train(nb.toxic, 'hard');
+nb.train(nb.bulletproof, 'hard');
+nb.setLabelProbabilities();
+nb.setChordCountsInLabels();
+nb.setProbabilityOfChordsInLabels();
 
 // console.log('a',a,'b',b,'c',c)
 
-// nb.classify(['d', 'g', 'e', 'dm']);
-// nb.classify(['f#m7', 'a', 'dadd9', 'dmaj7', 'bm', 'bm7', 'd', 'f#m']);
+nb.classify(['d', 'g', 'e', 'dm']);
+nb.classify(['f#m7', 'a', 'dadd9', 'dmaj7', 'bm', 'bm7', 'd', 'f#m']);
 
 module.exports = {
     nb
